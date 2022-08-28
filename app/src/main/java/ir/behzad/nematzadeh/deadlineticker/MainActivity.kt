@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
@@ -102,12 +101,13 @@ fun BuildListView(items: List<Ticker>) {
         itemsIndexed(items) { index, it ->
             var name by remember { mutableStateOf(0L) }
 
+            val item = items[index]
             if (fullyVisibleIndices.isNotEmpty() && fullyVisibleIndices.find { it == index } == index) {
                 Log.e("MainActivity", "index: $index isVisible: $fullyVisibleIndices")
                 job = MainScope().launch {
                     while (true) {
                         name =
-                            TimeUnit.MILLISECONDS.toSeconds(items[index].deadline.time - Date().time)
+                            TimeUnit.MILLISECONDS.toSeconds(item.deadline.time - Date().time)
                         Log.e("MainActivity", "BuildListView: index: $index value: $name")
                         delay(1000)
                     }
@@ -116,27 +116,32 @@ fun BuildListView(items: List<Ticker>) {
             else job?.cancel()
 
             key(it) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    elevation = 6.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(text = items[index].title)
-                            Text(text = items[index].description)
-                        }
-                        Text(
-                            text = calcTime(name),
-                            style = TextStyle(fontWeight = FontWeight.Bold)
-                        )
-                    }
-                }
+                Item(item, name)
             }
+        }
+    }
+}
+
+@Composable
+private fun Item(item: Ticker, time: Long) {
+    Card(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        elevation = 6.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                Text(text = item.title)
+                Text(text = item.description)
+            }
+            Text(
+                text = calcTime(time),
+                style = TextStyle(fontWeight = FontWeight.Bold)
+            )
         }
     }
 }
