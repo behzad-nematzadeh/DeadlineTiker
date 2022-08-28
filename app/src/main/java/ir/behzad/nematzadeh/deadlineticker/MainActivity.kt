@@ -1,6 +1,5 @@
 package ir.behzad.nematzadeh.deadlineticker
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -12,15 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -29,13 +26,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ir.behzad.nematzadeh.deadlineticker.ui.theme.DeadLineTickerTheme
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,74 +49,29 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                     }
-                    BuildListView(items = items)
-                    //HelloContent()
-
-                }
-            }
-        }
-    }
-}
-
-@SuppressLint("CoroutineCreationDuringComposition")
-@Composable
-fun BuildListView(items: List<Ticker>) {
-    var job: Job? = null
-    val state = rememberLazyListState()
-    val fullyVisibleIndices: List<Int> by remember {
-        derivedStateOf {
-            val layoutInfo = state.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (visibleItemsInfo.isEmpty()) {
-                emptyList()
-            } else {
-                val fullyVisibleItemsInfo = visibleItemsInfo.toMutableList()
-
-                val lastItem = fullyVisibleItemsInfo.last()
-
-                val viewportHeight = layoutInfo.viewportEndOffset + layoutInfo.viewportStartOffset
-
-                if (lastItem.offset + lastItem.size > viewportHeight) {
-                    fullyVisibleItemsInfo.removeLast()
-                }
-
-                val firstItemIfLeft = fullyVisibleItemsInfo.firstOrNull()
-                if (firstItemIfLeft != null && firstItemIfLeft.offset < layoutInfo.viewportStartOffset) {
-                    fullyVisibleItemsInfo.removeFirst()
-                }
-
-                fullyVisibleItemsInfo.map { it.index }
-            }
-        }
-    }
-
-    LazyColumn(state = state) {
-        itemsIndexed(items) { index, it ->
-            var name by remember { mutableStateOf(0L) }
-
-            val item = items[index]
-            if (fullyVisibleIndices.isNotEmpty() && fullyVisibleIndices.find { it == index } == index) {
-                Log.e("MainActivity", "index: $index isVisible: $fullyVisibleIndices")
-                job = MainScope().launch {
-                    while (true) {
-                        name =
-                            TimeUnit.MILLISECONDS.toSeconds(item.deadline.time - Date().time)
-                        Log.e("MainActivity", "BuildListView: index: $index value: $name")
-                        delay(1000)
+                    LazyColumn {
+                        itemsIndexed(items) { index, it ->
+                            Item(it)
+                        }
                     }
                 }
             }
-            else job?.cancel()
-
-            key(it) {
-                Item(item, name)
-            }
         }
     }
 }
 
 @Composable
-private fun Item(item: Ticker, time: Long) {
+private fun Item(item: Ticker) {
+    var time by remember { mutableStateOf(item.deadline.time - Date().time) }
+
+    LaunchedEffect(key1 = item) {
+        while (true) {
+            Log.d("MainActivity", "${item.title} $time")
+            time = item.deadline.time - Date().time
+            delay(1_000)
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxSize()
@@ -139,7 +87,7 @@ private fun Item(item: Ticker, time: Long) {
                 Text(text = item.description)
             }
             Text(
-                text = calcTime(time),
+                text = calcTime(time / 1000),
                 style = TextStyle(fontWeight = FontWeight.Bold)
             )
         }
